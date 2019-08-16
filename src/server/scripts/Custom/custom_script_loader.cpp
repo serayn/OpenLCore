@@ -16,12 +16,14 @@
  */
 
 // This is where scripts' loading functions should be declared:
-
+#include "SeraynCodes/serayn_custom_loader.h"
 void AddSC_custom_npcs();
 void AddSC_start_equipment();
 void AddSC_double_xp();
 void AddSC_quest_conversation();
 void AddSC_debug_lfg();
+
+
 
 void AddCustomScripts()
 {
@@ -30,4 +32,14 @@ void AddCustomScripts()
     AddSC_double_xp();
     AddSC_quest_conversation();
     AddSC_debug_lfg();
+    AddSeraynWorldScripts();
+    AddSeraynPlayerScripts();
+    AddAssetManagerScripts();
+    AddCityLibraryScripts();
+    AddCustomStatsSystemScripts();
+    AddKnowledgeSystemScripts();
+    AddOtherSpellsScripts();
+    AddPreparingSpellsScripts();
+    AddSeraynNPCScripts();
+
 }
