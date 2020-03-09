@@ -32,6 +32,7 @@
 #include "SocialMgr.h"
 #include "World.h"
 #include "WorldSession.h"
+#include "SpellMgr.h"
 class AccountMgr;
 class Area;
 class AreaTrigger;
@@ -195,7 +196,9 @@ class TC_GAME_API ScriptObject
     public:
 
         const std::string& GetName() const { return _name; }
-
+        // Do not override this in scripts; it should be overridden by the various script type classes. It indicates
+        // whether or not this script type must be assigned in the database.
+        virtual bool IsDatabaseBound() const { return false; }
     protected:
 
         ScriptObject(const char* name);
@@ -228,6 +231,7 @@ class TC_GAME_API SpellScriptLoader : public ScriptObject
         SpellScriptLoader(const char* name);
 
     public:
+        bool IsDatabaseBound() const override { return true; }
 
         // Should return a fully valid SpellScript pointer.
         virtual SpellScript* GetSpellScript() const { return nullptr; }
@@ -418,6 +422,21 @@ class TC_GAME_API FormulaScript : public ScriptObject
 
         virtual void OnIsPrimaryProfessionSkill(SkillLineEntry const* /*pSkill*/, uint32 /*SkillId*/, bool& /*result*/) { }
 };
+namespace Battlepay
+{
+    struct Product;
+}
+
+class TC_GAME_API BattlePayProductScript : public ScriptObject
+{
+protected:
+    explicit BattlePayProductScript(std::string scriptName);
+public:
+    virtual void OnProductDelivery(WorldSession* /*session*/, Battlepay::Product const& /*product*/) { }
+    virtual bool CanShow(WorldSession* /*session*/, Battlepay::Product const& /*product*/) { return true; }
+    virtual bool CanBuy(WorldSession* /*session*/, Battlepay::Product const& /*product*/, std::string& /*reason*/) { return true; }
+    virtual std::string GetCustomData(Battlepay::Product const& /*product*/) { return ""; }
+};
 
 template<class TMap>
 class MapScript : public UpdatableScript<TMap>
@@ -467,7 +486,7 @@ class TC_GAME_API InstanceMapScript
         InstanceMapScript(const char* name, uint32 mapId);
 
     public:
-
+        bool IsDatabaseBound() const override { return true; }
         // Gets an InstanceScript object for this instance.
         virtual InstanceScript* GetInstanceScript(InstanceMap* /*map*/) const { return NULL; }
 };
@@ -510,6 +529,8 @@ class TC_GAME_API ItemScript : public ScriptObject
 
         // Called when a player selects an option in an item gossip window
         virtual void OnGossipSelectCode(Player* /*player*/, Item* /*item*/, uint32 /*sender*/, uint32 /*action*/, const char* /*code*/) { }
+
+        virtual bool OnCreate(Player* /*player*/, Item* /*item*/) { return false; } //TODO: no hook in core yet
 };
 
 class TC_GAME_API UnitScript : public ScriptObject
@@ -542,6 +563,7 @@ class TC_GAME_API CreatureScript : public UnitScript, public UpdatableScript<Cre
         CreatureScript(const char* name);
 
     public:
+        bool IsDatabaseBound() const override { return true; }
 
         // Called when a dummy spell effect is triggered on the creature.
         virtual bool OnDummyEffect(Unit* /*caster*/, uint32 /*spellId*/, SpellEffIndex /*effIndex*/, Creature* /*target*/) { return false; }
@@ -561,6 +583,9 @@ class TC_GAME_API CreatureScript : public UnitScript, public UpdatableScript<Cre
         // Called when a player selects a quest in the creature's quest menu.
         virtual bool OnQuestSelect(Player* /*player*/, Creature* /*creature*/, Quest const* /*quest*/) { return false; }
 
+        // Called when a player completes a quest with the creature.
+        virtual bool OnQuestComplete(Player* /*player*/, Creature* /*creature*/, Quest const* /*quest*/) { return false; }
+
         // Called when a player completes a quest and is rewarded, opt is the selected item's index or 0
         virtual bool OnQuestReward(Player* /*player*/, Creature* /*creature*/, Quest const* /*quest*/, uint32 /*opt*/) { return false; }
 
@@ -574,6 +599,17 @@ class TC_GAME_API CreatureScript : public UnitScript, public UpdatableScript<Cre
         virtual CreatureAI* GetAI(Creature* /*creature*/) const { return NULL; }
 };
 
+template<class AI>
+CreatureAI* GetAIForInstance(Creature* creature, const char *Name)
+{
+    if (InstanceMap* instance = creature->GetMap()->ToInstanceMap())
+        if (instance->GetInstanceScript())
+            if (instance->GetScriptId() == sObjectMgr->GetScriptId(Name))
+                return new AI(creature);
+    return nullptr;
+}
+
+
 class TC_GAME_API GameObjectScript : public ScriptObject, public UpdatableScript<GameObject>
 {
     protected:
@@ -581,6 +617,7 @@ class TC_GAME_API GameObjectScript : public ScriptObject, public UpdatableScript
         GameObjectScript(const char* name);
 
     public:
+        bool IsDatabaseBound() const override { return true; }
 
         // Called when a dummy spell effect is triggered on the gameobject.
         virtual bool OnDummyEffect(Unit* /*caster*/, uint32 /*spellId*/, SpellEffIndex /*effIndex*/, GameObject* /*target*/) { return false; }
@@ -626,9 +663,27 @@ class TC_GAME_API AreaTriggerScript : public ScriptObject
         AreaTriggerScript(const char* name);
 
     public:
+        bool IsDatabaseBound() const override { return true; }
 
         // Called when the area trigger is activated by a player.
         virtual bool OnTrigger(Player* /*player*/, AreaTriggerEntry const* /*trigger*/, bool /*entered*/) { return false; }
+
+        // Called when a AreaTriggerAI object is needed for the areatrigger.
+        virtual AreaTriggerAI* GetAI(AreaTrigger* /*at*/) const { return nullptr; }
+};
+
+class SceneTriggerScript : public ScriptObject
+{
+protected:
+
+    SceneTriggerScript(std::string name);
+
+public:
+
+    bool IsDatabaseBound() const override { return true; }
+
+    // Called when the scene event trigger by call CMSG_SCENE_TRIGGER_EVENT
+    virtual bool OnTrigger(Player* /*player*/, SpellScene const* /*trigger*/, std::string /*triggername*/) { return false; }
 };
 
 class TC_GAME_API BattlegroundScript : public ScriptObject

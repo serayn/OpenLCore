@@ -3046,6 +3046,12 @@ FormulaScript::FormulaScript(const char* name)
     ScriptRegistry<FormulaScript>::Instance()->AddScript(this);
 }
 
+BattlePayProductScript::BattlePayProductScript(std::string name)
+    : ScriptObject(name)
+{
+    ScriptRegistry<BattlePayProductScript>::Instance()->AddScript(this);
+}
+
 UnitScript::UnitScript(const char* name, bool addToScripts)
     : ScriptObject(name)
 {

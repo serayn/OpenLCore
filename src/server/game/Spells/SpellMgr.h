@@ -757,7 +757,14 @@ class TC_GAME_API SpellMgr
         SpellInfoMap               mSpellInfoMap;
         SpellTotemModelMap         mSpellTotemModel;
 };
-
+struct SpellScene
+{
+    int32 SceneScriptPackageID;
+    int32 MiscValue;
+    int32 PlaybackFlags;
+    uint32 CustomDuration;
+    uint32 scriptID;
+};
 #define sSpellMgr SpellMgr::instance()
 
 #endif
